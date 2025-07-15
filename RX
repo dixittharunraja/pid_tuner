@@ -1,20 +1,28 @@
 #include <EEPROM.h>
+#include <SoftwareSerial.h>
+
+// Define SoftwareSerial pins
+#define HC12_RX 8  // Leonardo receives on this pin
+#define HC12_TX 9  // Leonardo transmits on this pin
+
+SoftwareSerial hc12(HC12_RX, HC12_TX);
 
 int kp = 0, ki = 0, kd = 0;
 const int EEPROM_ADDR[3] = {0, 4, 8};
 
 void setup() {
-  Serial.begin(9600); // HC-12 connected to Serial (pins 0/1)
+  Serial.begin(9600);      // For Serial Monitor (USB)
+  hc12.begin(9600);        // For HC-12
   loadPIDValuesFromEEPROM();
   printPID();
 }
 
 void loop() {
   static String inputString = "";
-  while (Serial.available()) {
-    char inChar = (char)Serial.read();
+  while (hc12.available()) {
+    char inChar = (char)hc12.read();
     if (inChar == '\n') {
-      inputString.trim(); // Remove whitespace
+      inputString.trim();
       processCommand(inputString);
       inputString = "";
     } else {
