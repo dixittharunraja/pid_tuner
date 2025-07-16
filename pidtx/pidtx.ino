@@ -3,6 +3,9 @@
 #include <Adafruit_SSD1306.h>
 #include <digitalWriteFast.h>
 #include <EEPROM.h>
+#include <SoftwareSerial.h>
+
+SoftwareSerial hc12(3, 2);
 
 #define SCREEN_WIDTH 128
 #define SCREEN_HEIGHT 64
@@ -24,19 +27,13 @@ struct Encoder {
   int y;
 };
 
-const int saveButtonPin = 2;
-const int resetButtonPin = 3;
-
-bool lastSaveButtonState = HIGH;
-bool lastResetButtonState = HIGH;
-unsigned long lastDebounceTimeSave = 0;
-unsigned long lastDebounceTimeReset = 0;
-const unsigned long debounceDelay = 50; // ms
+const int saveButtonPin = A2;
+const int resetButtonPin = A3;
 
 Encoder encoders[] = {
-  {4, 5, 6, 0, 0, HIGH, false, 0, "Kp", 0},
+  {10, 11, 12, 0, 0, HIGH, false, 0, "Kp", 0},
   {7, 8, 9, 0, 0, HIGH, false, 0, "Ki", 22},
-  {10, 11, 12, 0, 0, HIGH, false, 0, "Kd", 44}
+  {4, 5, 6, 0, 0, HIGH, false, 0, "Kd", 44}
 };
 const int NUM_ENCODERS = sizeof(encoders)/sizeof(encoders[0]);
 
@@ -51,6 +48,7 @@ void printToOLED(const char* text, int x, int y, int textSize = 2, uint16_t colo
 
 void setup() {
   Serial.begin(9600);
+  hc12.begin(9600);
 
   if (!display.begin(SSD1306_SWITCHCAPVCC, OLED_ADDR)) {
     for (;;);
@@ -127,28 +125,18 @@ void showPID() {
 
 void checkButtons() {
   int readingSave = digitalRead(saveButtonPin);
-  if (readingSave != lastSaveButtonState) {
-    lastDebounceTimeSave = millis();
-  }
-  if ((millis() - lastDebounceTimeSave) > debounceDelay) {
-    if (lastSaveButtonState == HIGH && readingSave == LOW) { // Button pressed
+  if (readingSave == LOW) {
       savePIDValues();
       Serial.print("SAVE\n");
-    }
+      hc12.print("SAVE\n");
   }
-  lastSaveButtonState = readingSave;
 
   int readingReset = digitalRead(resetButtonPin);
-  if (readingReset != lastResetButtonState) {
-    lastDebounceTimeReset = millis();
-  }
-  if ((millis() - lastDebounceTimeReset) > debounceDelay) {
-    if (lastResetButtonState == HIGH && readingReset == LOW) { // Button pressed
+  if (readingReset == LOW) {
       resetPIDValues();
       Serial.print("RESET\n");
-    }
+      hc12.print("RESET\n");
   }
-  lastResetButtonState = readingReset;
 }
 
 void loadPIDValuesFromEEPROM() {
@@ -193,4 +181,5 @@ void sendSinglePID(int idx) {
       return;
   }
   Serial.print(msg);
+  hc12.print(msg);
 }
